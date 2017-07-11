@@ -71,8 +71,8 @@ describe('End-to-End Test', function () {
           .wait('.signed-in-page', 2000)
       })
 
-      // Take a screenshot after submitting.
-      .screenshot('sign-in-form')
+      // Take a screenshot with a custom diff threshold (default is 0.2%).
+      .screenshot('sign-in-form', 0.75)
 
       //
       // .capture() is both .navigate() and .screenshot() in one!
@@ -117,10 +117,12 @@ niffy.navigate(function * (nightmare, type) {
 
 where `nightmare` is a nightmare instance, and `type` is either `"base"` or `"test"`, in that order.
 
-### .screenshot(name)
+### .screenshot(name[, threshold])
 This method queues a screenshot to be taken, typically after a `.navigate()`. It will store a temporary file under `/tmp/niffy/` with the given `name`, so be sure to choose a name that is unique within the scope of your single test!
 
-### .capture(name, fn)
+If `threshold` is given, it will override the default (`0.2%`).
+
+### .capture(name[, threshold], fn)
 A handy convenience function that queues both `.navigate(fn)` and `.screenshot(name)`.
 
 ### .execute()

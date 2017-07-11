@@ -70,9 +70,13 @@ function* runGoto (type, path) {
  * @param {String} name
  * @param {Function} fn
  */
-Niffy.prototype.capture = function (name, fn) {
+Niffy.prototype.capture = function (name, threshold, fn) {
+  if ( arguments.length === 2 ) {
+    fn = threshold
+    threshold = this.errorThreshold
+  }
   this.queue.push({ type: 'navigate', fn: fn });
-  this.queue.push({ type: 'screenshot', name: name });
+  this.queue.push({ type: 'screenshot', name: name, threshold: threshold });
   return this;
 };
 
@@ -98,15 +102,16 @@ function* runNavigate (type, fn) {
 /**
  * Screenshot and compare across base and test domains.
  *
- * @param {Function} fn
+ * @param {String} name
+ * @param {Number} (Optional) threshold
  */
-Niffy.prototype.screenshot = function (name) {
-  this.queue.push({ type: 'screenshot', name: name })
+Niffy.prototype.screenshot = function (name, threshold) {
+  this.queue.push({ type: 'screenshot', name: name, threshold: threshold || this.errorThreshold })
   return this
 }
 
 
-function* runScreenshot (type, name) {
+function* runScreenshot (type, name, threshold) {
   var pathBase = imgfilepath('base', name);
   var pathTest = imgfilepath('test', name);
   var pathDiff = imgfilepath('diff', name);
@@ -139,9 +144,12 @@ function* runScreenshot (type, name) {
    */
 
   var pct = '' + Math.floor(diff.percentage * 10000) / 10000 + '%';
-  var failMessage = sprintf('%s different, open %s', pct, pathDiff);
+  var failMessage = sprintf('%s different (> %s threshold), open %s', pct, threshold+'%', pathDiff);
   var absolutePct = Math.abs(diff.percentage);
-  if (diff.percentage > this.errorThreshold) {
+
+  debug('"%s" diffed %s (%s threshold)', name, diff.percentage+'%', threshold+'%');
+
+  if (diff.percentage > threshold) {
     throw new Error(failMessage);
   }
 };
@@ -163,7 +171,7 @@ Niffy.prototype.execute = co.wrap(function * () {
         yield runNavigate.call(this, types[t], action.fn);
       }
       else if ( action.type === 'screenshot' ) {
-        yield runScreenshot.call(this, types[t], action.name);
+        yield runScreenshot.call(this, types[t], action.name, action.threshold);
       }
     }
   }
