@@ -8,17 +8,93 @@ built on <a href="https://github.com/segmentio/nightmare">Nightmare</a> by <a hr
 <a href="https://npmjs.com/package/niffy"><img src="https://img.shields.io/npm/v/niffy.svg" /></a>
 </p>
 
-## Getting Started
-You can look at [`test/index.js`](https://github.com/segmentio/niffy/blob/master/test/index.js) as an example for how to use Niffy. To run the example test just do `make test` after cloning this repo.
+## Overview
 
-## Reference
-Niffy is built on [Nightmare](https://github.com/segmentio/nightmare) and used in combination with [Mocha](https://mochajs.org/). You'll also need to read and use both of those library's APIs to use niffy effectively.
+Niffy is a library to help you build end-to-end tests that are augmented with automatic visual change detection.
+
+Niffy does not need to store files beyond a tmp directory. Instead, it makes live requests to two different domains of your choosing, and reports an error if they differentiate above a certain threshold.
+
+## Getting Started
+
+    npm install --save niffy
+
+### Runtime Requirements
+
+  - `global.Promise`
+  - Generator functions
+
+## Example
+
+
+```js
+var Niffy = require('niffy');
+
+var baseUrl = 'https://staging.example.com';
+var testUrl = 'http://localhost:3000';
+
+
+describe('End-to-End Test', function () {
+
+  var userCreds = {}
+
+  before(function () {
+    var nightmareOptions = { /* ... */ };
+
+    niffy = new Niffy(baseUrl, testUrl, nightmareOptions);
+
+    userCreds.base = { email: '1@cool.com', password: 'abc123' };
+    userCreds.test = { email: '2@cool.com', password: 'abc123' };
+  });
+
+  after(function () {
+    return niffy.end();
+  });
+
+  it('Signs in and clicks The Button', function () {
+
+    return niffy
+      .goto('/')
+
+      // This will compare across your base and test domains :)
+      .screenshot('home-page')
+
+      // Alternatively: .goto('/', 'home-page')
+
+      .navigate(function * (nightmare, type) {
+        //
+        // Sign Up
+        //
+        yield nightmare
+          .type('[name=email]', userCreds[type].email)
+          .type('[name=password]', userCreds[type].password)
+          .click('button[type=submit]')
+          .wait('.signed-in-page', 2000)
+      })
+
+      // Take a screenshot after submitting.
+      .screenshot('sign-in-form')
+
+      //
+      // .capture() is both .navigate() and .screenshot() in one!
+      //
+      .capture('after-button-click', function * (nightmare, type) {
+        //
+        // Click The Button
+        //
+        yield nightmare.click('button.the')
+      })
+
+      .execute(); // Release the hounds!
+  });
+
+});
+```
 
 ### Niffy(basehost, testhost[, options])
 To create a new Niffy differ:
 
 ```js
-let niffy = new Niffy(basehost, testhost, nightmareOptions);
+var niffy = new Niffy(basehost, testhost, nightmareOptions);
 ```
 
 * `basehost` is the url that is assumed "good"
@@ -26,37 +102,33 @@ let niffy = new Niffy(basehost, testhost, nightmareOptions);
 * `nightmareOptions` can be seen [here in the Nightmare docs](https://github.com/segmentio/nightmare#nightmareoptions)
   * `.threshold` is the maximum percentage difference for a passing test (default: 0.2%)
 
-### .test(url[, fn])
-This method instructs niffy to go to a `url` (and optionally take additional actions like clicking, typing or checkboxing via the `fn` argument), and test `basehost` vs. `testhost` screenshots for pixel differences, and output the diff-highlight image. Typically you'll use `.test(url, fn)` in the body of a mocha test, like this:
+### .goto(url[, screenshotName])
+This method queues an instruction to go to a `url`. If `screenshotName` is provided, then niffy will also take and compare screenshots.
+
+
+### .navigate(fn)
+This method queues `fn`, which is expected to be a **generator function** that takes two parameters:
 
 ```js
-it('/news', function* () {
-  yield niffy.test('/news');
-});
+niffy.navigate(function * (nightmare, type) {
+  return nightmare.type(...).click(...);
+})
 ```
 
-### .goto(url[, fn])
-This method instructs niffy to go to a `url` and optionally take additional actions like clicking, typing or checkboxing via the `fn` argument. Typically you'll use `.goto(url, fn)` in the `before` method of a mocha test suite, like this:
+where `nightmare` is a nightmare instance, and `type` is either `"base"` or `"test"`, in that order.
 
-```js
-before(function* () {
-  yield niffy.goto('/logout', function* (nightmare) {
-    yield nightmare
-      .type('input[name="email"]', 'fake@faketestfaketest.com')
-      .type('input[name="password"]', 'fakepassword')
-      .click('button[type="submit"]');
-  });
-});
-```
+### .screenshot(name)
+This method queues a screenshot to be taken, typically after a `.navigate()`. It will store a temporary file under `/tmp/niffy/` with the given `name`, so be sure to choose a name that is unique within the scope of your single test!
+
+### .capture(name, fn)
+A handy convenience function that queues both `.navigate(fn)` and `.screenshot(name)`.
+
+### .execute()
+Runs all queued actions twice – first against your base domain, then against your test domain. Also the queue.
 
 ### .end()
-This method closes the underlying Nightmare instance (e.g. freeing up memory). Typically you'll use `.end()` in the `after` method of a mocha test suite, like this:
+This method shuts down the underlying Nightmare instance (e.g. freeing up memory). Typically you'll use `.end()` in the `after` method of a mocha test suite, like this:
 
-```js
-after(function* () {
-  yield niffy.end();
-});
-```
 
 
 ## License (MIT)

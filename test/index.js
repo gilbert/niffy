@@ -15,15 +15,15 @@ describe('Google', function () {
     )
   })
 
-  it('Homepage', function* () {
-    yield niffy.test('/')
+  it('Homepage', function () {
+    return niffy.goto('/').screenshot('google-home')
   })
 
-  it('Services', function* () {
-    yield niffy.test('/services')
+  it('Services', function () {
+    return niffy.goto('/services').screenshot('google-services')
   })
 
-  after(function* () {
-    yield niffy.end()
+  after(function () {
+    return niffy.end()
   })
 })
