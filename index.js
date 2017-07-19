@@ -57,7 +57,7 @@ Niffy.prototype.goto = function (path, name) {
 };
 
 function* runGoto (type, path) {
-  var destination = this[type+'host']
+  var destination = this[type+'host'] + path
 
   this.startProfile('goto');
   yield this.nightmare.goto(destination);
@@ -95,7 +95,7 @@ function* runNavigate (type, fn) {
   this.startProfile('navigate');
   yield timeout(1000);
   yield fn(this.nightmare, type);
-  yield timeout(1000);
+  yield timeout(2000);
   this.stopProfile('navigate');
 }
 
@@ -121,7 +121,7 @@ function* runScreenshot (type, name, threshold) {
    */
 
   this.startProfile('screenshot');
-  yield this.nightmare.wait(1000).screenshot( type === 'base' ? pathBase : pathTest )
+  yield this.nightmare.wait(5000).screenshot( type === 'base' ? pathBase : pathTest )
   this.stopProfile('screenshot');
   yield timeout(250);
 
